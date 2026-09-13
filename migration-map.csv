@@ -1,6 +1,6 @@
 old_url,staging_path,current_status,note
 https://op-project.ru/,/,200,restored from MHTML+HTTrack
-https://op-project.ru/home,/home/,200,legacy saved copy preserved
+https://op-project.ru/home,/home/,301-equivalent,redirects to restored homepage on staging; use HTTP 301 on production
 https://op-project.ru/referencelist,/referencelist/,200,partial restoration: 16 project titles preserved
 https://op-project.ru/contacts,/contacts/,200,restored contacts and emails
 https://op-project.ru/drying,/drying/,200,restored from MHTML
@@ -14,7 +14,7 @@ https://op-project.ru/plant,/plant/,200,restored from MHTML
 https://op-project.ru/agro,/agro/,200,restored from MHTML
 https://op-project.ru/page-derevo,/page-derevo/,200,restored from MHTML
 https://op-project.ru/policy,/policy/,200,legacy HTTrack copy preserved
-https://op-project.ru/callmeback,/callmeback/,200,staging contact form route preserved
+https://op-project.ru/callmeback,/callmeback/,301-equivalent,redirects to contacts on staging; use HTTP 301 on production
 https://op-project.ru/presswood,/presswood/,200,restored from MHTML; was 404 on current production snapshot
 https://op-project.ru/offers,/offers/,200,restored from MHTML; was 404 on current production snapshot
 https://op-project.ru/revision,/revision/,200,restored from MHTML; was 404 on current production snapshot
