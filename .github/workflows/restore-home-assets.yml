@@ -1,0 +1,75 @@
+name: Restore exact home images
+
+on:
+  push:
+    branches: [restore-home-exact-copy]
+    paths:
+      - '.github/workflows/restore-home-assets.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: restore-home-exact-copy
+
+      - name: Download exact source images from archived site
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p assets/images
+          curl -fL --retry 3 'https://op-project.ru/img/qmDkwcCFrBLVtJErF8Zvu0iTA3op5VAMt4umH8T6cJo/q:87/el:1/g:ce/w:532/h:792/resize:fill/aHR0cHM6Ly9zMy5yZWcuc29sdXRpb25zLzZkYWUyOWFhLWYzMzAtNDRmZi04ODE4LTFhYjVhMDI2ZjYxOC9pbWFnZXMvMzk5ZWIwYzgtZGRkNC00Y2Y4LWEyMGYtYzVhZmFlZDkxMzg5LV92MHdxY2JkZWsud2VicA.webp' -o assets/images/home-service-project.webp
+          curl -fL --retry 3 'https://op-project.ru/img/lBqZhr_nPP9OAch9c4E6i7aa-d4zuyC8dzDLTU23gqs/q:87/el:1/g:ce/w:532/h:792/resize:fill/aHR0cHM6Ly9zMy5yZWcuc29sdXRpb25zLzZkYWUyOWFhLWYzMzAtNDRmZi04ODE4LTFhYjVhMDI2ZjYxOC9pbWFnZXMvMDI3OGUxMDUtYWY2Ny00NjA4LTkzNzItMzE4NzViNWM5MmExLXNodXR0ZXJzdG9ja18xMTkzMDU5OTIxLmpwZw.webp' -o assets/images/home-service-optimisation.webp
+          curl -fL --retry 3 'https://op-project.ru/img/0Z5pU6VScBQSi8FLuXVgP1KanOW2UpeJlMmLugjS1qE/q:87/el:1/g:ce/w:532/h:792/resize:fill/aHR0cHM6Ly9zMy5yZWcuc29sdXRpb25zL2M0OWI4OThlLTRlMTQtNGQ1NC1iMWFkLTJiNzdhNWM3Nzc1MC9pbWFnZXMvMDczMDM1OWYtY2NmMi00NzZlLWIxMDYtMzhkNTllN2U4OWUwLWdlbWluaV9nZW5lcmF0ZWRfaW1hZ2VfM3BudjM5M3BudjM5M3BudiAyLnBuZw.webp' -o assets/images/home-service-audit.webp
+          curl -fL --retry 3 'https://op-project.ru/img/ksGSNdadPTqut7CzBhETRQHF2xRJiXyQ-zsV92_YJqU/q:87/el:1/g:ce/w:532/h:792/resize:fill/aHR0cHM6Ly9zMy5yZWcuc29sdXRpb25zLzZkYWUyOWFhLWYzMzAtNDRmZi04ODE4LTFhYjVhMDI2ZjYxOC9pbWFnZXMvYWY5NDUyZjEtY2JjYi00YWRlLWFkMjktNDI5YjdjMjUyMjg2LV96M2cycHFnNnMud2VicA.webp' -o assets/images/home-service-revision.webp
+          curl -fL --retry 3 'https://op-project.ru/img/1Q7bqEN9hX7wU2A510CUkCVdNrzFgP6wit6klJClpa0/q:87/el:1/g:ce/w:532/h:792/resize:fill/aHR0cHM6Ly9zMy5yZWcuc29sdXRpb25zLzZkYWUyOWFhLWYzMzAtNDRmZi04ODE4LTFhYjVhMDI2ZjYxOC9pbWFnZXMvNGFjOGIxYTAtZTI0Ny00NzAxLWIyYWEtMGIyY2Q5NWM4OGVjLV9hZGVzNWxuc2Qud2VicA.webp' -o assets/images/home-service-supply.webp
+          curl -fL --retry 3 'https://op-project.ru/img/n-bFl79DhMrXKkC6UOG4p9sdceoZbzRVO4brALdrITs/q:87/el:1/g:ce/w:532/h:792/resize:fill/aHR0cHM6Ly9zMy5yZWcuc29sdXRpb25zLzZkYWUyOWFhLWYzMzAtNDRmZi04ODE4LTFhYjVhMDI2ZjYxOC9pbWFnZXMvYTE2ODFlODEtNzc5OS00ZDk3LWI5YjYtNDIwNzQ1MWQzODBkLV91OGJtbWptdjcud2VicA.webp' -o assets/images/home-service-installation.webp
+
+      - name: Verify exact bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat <<'EOF' | sha256sum -c -
+          dd7df9a172ee4b54636536a82368a1046bcf807b00f8f502c123210c1f584ed2  assets/images/home-service-project.webp
+          327f2818a36ff5195043ffd761e6f236630c15ecf5450efef3e86035ed395ccc  assets/images/home-service-optimisation.webp
+          2d06637fc9db1e0fa64f8aac943129055ef4993dbbe57b0f5a43a24d614aecfe  assets/images/home-service-audit.webp
+          89225718ab5f25622e623314ce8b5727387896007b59773d2af6be32d440b470  assets/images/home-service-revision.webp
+          14ec0d85d992a5152400bc284610b543a60607c1e4e023a6860a44d38bcc9422  assets/images/home-service-supply.webp
+          b3692e648caf663eb9b2fe4775fc4e85c4076fee5627a9cc77e4615d8b9b1550  assets/images/home-service-installation.webp
+          EOF
+
+      - name: Wire exact assets into home page
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('/op-project-staging/assets/images/81c1da3ac8f2.jpg', '/op-project-staging/assets/images/home-composite-original.jpg')
+          replacements = {
+            "href=\"/op-project-staging/tech-project/\" style=\"background-image:url('/op-project-staging/assets/images/2d103a90c319.jpg')\"": "href=\"/op-project-staging/tech-project/\" style=\"background-image:url('/op-project-staging/assets/images/home-service-project.webp')\"",
+            "href=\"/op-project-staging/optimisation/\" style=\"background-image:url('/op-project-staging/assets/images/bbf23ae3c0e3.webp')\"": "href=\"/op-project-staging/optimisation/\" style=\"background-image:url('/op-project-staging/assets/images/home-service-optimisation.webp')\"",
+            "href=\"/op-project-staging/tech-audit/\" style=\"background-image:url('/op-project-staging/assets/images/f43b7a98c56a.webp')\"": "href=\"/op-project-staging/tech-audit/\" style=\"background-image:url('/op-project-staging/assets/images/home-service-audit.webp')\"",
+            "href=\"/op-project-staging/revision/\" style=\"background-image:url('/op-project-staging/assets/images/0879d87f32bd.webp')\"": "href=\"/op-project-staging/revision/\" style=\"background-image:url('/op-project-staging/assets/images/home-service-revision.webp')\"",
+            "href=\"/op-project-staging/supply/\" style=\"background-image:url('/op-project-staging/assets/images/2aca3d79397b.webp')\"": "href=\"/op-project-staging/supply/\" style=\"background-image:url('/op-project-staging/assets/images/home-service-supply.webp')\"",
+            "href=\"/op-project-staging/installation/\" style=\"background-image:url('/op-project-staging/assets/images/705373aeaefc.webp')\"": "href=\"/op-project-staging/installation/\" style=\"background-image:url('/op-project-staging/assets/images/home-service-installation.webp')\"",
+          }
+          for old, new in replacements.items():
+              if old not in s:
+                  raise SystemExit(f'Expected home fragment not found: {old}')
+              s = s.replace(old, new)
+          p.write_text(s, encoding='utf-8')
+
+      - name: Commit exact restoration
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html assets/images/home-service-*.webp
+          git commit -m 'Restore exact original home service images' || exit 0
+          git push origin HEAD:restore-home-exact-copy
