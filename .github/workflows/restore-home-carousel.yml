@@ -1,0 +1,52 @@
+name: Restore original home carousel
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/restore-home-carousel.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Restore four original carousel entries
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          start = s.index('<section class="hero wrap"><div class="carousel" id="carousel">')
+          end = s.index('</div></section>', start) + len('</div></section>')
+          new = '''<section class="hero wrap"><div class="carousel" id="carousel"><a class="slide active" href="/op-project-staging/composite/" style="background-image:url('/op-project-staging/assets/images/home-composite-original.png')"><div class="slide-copy"><h1>Композитные материалы</h1><p>на основе древесных отходов и минерального связующего</p><span class="pill">Бизнес</span></div></a><a class="slide" href="/op-project-staging/presswood/" style="background-image:url('/op-project-staging/assets/images/c986cba77328.webp')"><div class="slide-copy"><h2>Presswood. Производство прессованных поддонов</h2><span class="pill">Подробнее</span></div></a><a class="slide" href="/op-project-staging/charcoal/" style="background-image:url('/op-project-staging/assets/images/ea8448552b66.jpeg')"><div class="slide-copy"><h2>Древесноугольные брикеты из опилок</h2><p>Глубокая переработка древесных отходов</p><span class="pill">Подробнее</span></div></a><a class="slide" href="/op-project-staging/charcoal/" style="background-image:url('/op-project-staging/assets/images/ea8448552b66.jpeg')"><div class="slide-copy"><h2>Кальянный уголь из древесных отходов</h2><p>Качественный уголь из доступного сырья</p><span class="pill">Подробнее</span></div></a><button class="arrow prev" type="button">‹</button><button class="arrow next" type="button">›</button><div class="dots"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div></section>'''
+          s = s[:start] + new + s[end:]
+          p.write_text(s, encoding='utf-8')
+
+      - name: Verify carousel structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(grep -o 'class=\"slide' index.html | wc -l)" -ge 4
+          grep -q 'Древесноугольные брикеты из опилок' index.html
+          grep -q 'Кальянный уголь из древесных отходов' index.html
+          grep -q 'Presswood. Производство прессованных поддонов' index.html
+
+      - name: Commit and remove one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/restore-home-carousel.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Restore four-slide home carousel'
+          git push origin HEAD:main
