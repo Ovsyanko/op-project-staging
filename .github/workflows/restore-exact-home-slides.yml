@@ -1,0 +1,73 @@
+name: Restore exact original home slides
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/restore-exact-home-slides.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Download exact rendered images saved from original home page
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p assets/images
+          curl -fL --retry 3 'https://op-project.ru/img/PFWRG_4A3FPGaTnp6hXrEbtFN43pPGE683xURdSWZaI/q:87/el:1/g:ce/w:0/h:1000/resize:fit/aHR0cHM6Ly9zMy5yZWcuc29sdXRpb25zLzZkYWUyOWFhLWYzMzAtNDRmZi04ODE4LTFhYjVhMDI2ZjYxOC9pbWFnZXMvNjBlNDczY2ItN2YxNy00OWQzLWEzMjQtNmUzNzdlMWM0MDg3LXNhbXBsZV9waWMucG5n.webp' -o assets/images/home-slide-composite.webp
+          curl -fL --retry 3 'https://op-project.ru/img/xDv7hOlCJakeOGI00eqp5QroZyPx9GFGP8Bpo_uBncU/q:87/el:1/g:ce/w:0/h:1000/resize:fit/aHR0cHM6Ly9zMy5yZWcuc29sdXRpb25zLzZkYWUyOWFhLWYzMzAtNDRmZi04ODE4LTFhYjVhMDI2ZjYxOC9pbWFnZXMvODE2ZjNkYzgtN2UzOC00ZmEyLWE2YWItYWExOTU4MjUwODVkLV9lcmdvOHBoZmMud2VicA.webp' -o assets/images/home-slide-presswood.webp
+          curl -fL --retry 3 'https://op-project.ru/img/oRlwwoIjWvtSf2smQ4VBBGJpm8sftjS3T4VEUX-FzRw/q:87/el:1/g:ce/w:0/h:1000/resize:fit/aHR0cHM6Ly9zMy5yZWcuc29sdXRpb25zLzZkYWUyOWFhLWYzMzAtNDRmZi04ODE4LTFhYjVhMDI2ZjYxOC9pbWFnZXMvNDkxZDg1NTUtNGM4OS00N2EwLWIyNGUtZmJhM2E4MzU5OWMyLXdoYXRzYXBwaW1hZ2UyMDI2LTAxLTI2YXQxNC4xNS4wM9Cy0LrQsNGB0YHQtdGC0LDRhS5qcGVn.webp' -o assets/images/home-slide-charcoal-briquettes.webp
+          curl -fL --retry 3 'https://op-project.ru/img/MA5O0Lrzdqb30GxkqVUhkU0ur85Lkfp_aILEn_WtZKA/q:87/el:1/g:ce/w:0/h:1000/resize:fit/aHR0cHM6Ly9zMy5yZWcuc29sdXRpb25zLzZkYWUyOWFhLWYzMzAtNDRmZi04ODE4LTFhYjVhMDI2ZjYxOC9pbWFnZXMvMjk1NjJlMGUtNTg0ZS00YzZlLTkzZTctMzk5YWZjZDAxZjNjLTU0NjU0Njg0Mjg2MjY4OTExMTMuanBn.webp' -o assets/images/home-slide-hookah-charcoal.webp
+
+      - name: Verify exact bytes against saved MHTML
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat <<'EOF' | sha256sum -c -
+          07314f311118ddc6b0390363529c9c74ca585cf9351825658e5275c9dda0e2e6  assets/images/home-slide-composite.webp
+          5f06f8dd3cf56fd7e7a15ab916fdf1150d306c81b42ca545e8a532460db27f6c  assets/images/home-slide-presswood.webp
+          4283a2d14a253a85a113d9f3f35880067abf77a389960bbf7231507dd08d647e  assets/images/home-slide-charcoal-briquettes.webp
+          62db93edda4e1371f17a457b049028a4a69201ab15e2d2b22247d17c7f8baec4  assets/images/home-slide-hookah-charcoal.webp
+          EOF
+
+      - name: Wire exact slides and exact source text
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          start=s.index('<section class="hero wrap"><div class="carousel" id="carousel">')
+          end=s.index('</div></section>',start)+len('</div></section>')
+          new='''<section class="hero wrap"><div class="carousel" id="carousel"><a class="slide active" href="/op-project-staging/composite/" style="background-image:url('/op-project-staging/assets/images/home-slide-composite.webp')"><div class="slide-copy"><h1>Композитные материалы</h1><p>на основе древесных отходов и минерального связующего</p><span class="pill">Бизнес</span></div></a><a class="slide" href="/op-project-staging/presswood/" style="background-image:url('/op-project-staging/assets/images/home-slide-presswood.webp')"><div class="slide-copy"><h2>Presswood. Производство прессованных поддонов</h2><span class="pill">Подробнее</span></div></a><a class="slide" href="/op-project-staging/charcoal/" style="background-image:url('/op-project-staging/assets/images/home-slide-charcoal-briquettes.webp')"><div class="slide-copy"><h2>Древесноугольные брикеты из опилок</h2><p>Высокорентабельный способ утилизации отходов лесопиления</p><span class="pill">Бизнес</span></div></a><a class="slide" href="/op-project-staging/charcoal/" style="background-image:url('/op-project-staging/assets/images/home-slide-hookah-charcoal.webp')"><div class="slide-copy"><h2>Кальянный уголь из древесных отходов</h2><p>Качественный уголь из доступного сырья.</p><span class="pill">Подробнее</span></div></a><button class="arrow prev" type="button">‹</button><button class="arrow next" type="button">›</button><div class="dots"><span class="dot active"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div></section>'''
+          s=s[:start]+new+s[end:]
+          p.write_text(s,encoding='utf-8')
+
+      - name: Verify exact carousel content
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'Высокорентабельный способ утилизации отходов лесопиления' index.html
+          grep -q 'home-slide-presswood.webp' index.html
+          grep -q 'home-slide-charcoal-briquettes.webp' index.html
+          grep -q 'home-slide-hookah-charcoal.webp' index.html
+
+      - name: Commit and remove one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/restore-exact-home-slides.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Restore exact original home carousel images and text'
+          git push origin HEAD:main
