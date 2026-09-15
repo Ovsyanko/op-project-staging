@@ -1,0 +1,70 @@
+name: Build op-co.ru FTP package
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/build-opco-package.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: reg-ru-production
+
+      - name: Prepare root-ready production tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          rsync -a --exclude='.git' --exclude='.github' --exclude='tools' ./ dist/
+
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('dist')
+          text_exts={'.html','.css','.js','.md','.txt','.csv','.tsv','.xml','.json','.map'}
+          n=0
+          for p in root.rglob('*'):
+              if not p.is_file(): continue
+              if p.name=='.htaccess' or p.suffix.lower() in text_exts:
+                  try: s=p.read_text(encoding='utf-8')
+                  except UnicodeDecodeError: continue
+                  ns=s.replace('/op-project-staging','')
+                  if ns!=s:
+                      p.write_text(ns,encoding='utf-8'); n+=1
+          print('updated',n,'text files')
+          PY
+
+          cat > dist/.htaccess <<'EOF'
+          DirectoryIndex index.html
+          <IfModule mod_headers.c>
+            Header set X-Robots-Tag "noindex, nofollow, noarchive"
+          </IfModule>
+          EOF
+
+          printf 'User-agent: *\nDisallow: /\n' > dist/robots.txt
+          rm -f dist/.htaccess.txt dist/.htaccess,txt
+
+      - name: Verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RIl '/op-project-staging' dist --exclude='*.woff2' --exclude='*.webp' --exclude='*.jpg' --exclude='*.jpeg' --exclude='*.png' --exclude='*.gif' | grep .; then exit 1; fi
+          test -f dist/index.html
+          test -f dist/assets/site-shell.js
+          test -f dist/pellets/index.html
+          test -f dist/agro/index.html
+          test -f dist/contacts/index.html
+
+      - name: Zip
+        run: cd dist && zip -qr ../op-co.ru-production.zip .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: op-co.ru-production
+          path: op-co.ru-production.zip
+          if-no-files-found: error
