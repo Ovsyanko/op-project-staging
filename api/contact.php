@@ -18,12 +18,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
     exit;
 }
 
-function fail(string $message, int $code=400): never {
+function fail(string $message, int $code=400) {
     http_response_code($code);
     echo json_encode(['ok'=>false,'message'=>$message], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
     exit;
 }
-function ok(): never {
+function ok() {
     echo json_encode(['ok'=>true], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -31,10 +31,10 @@ function post(string $key): string { return trim((string)($_POST[$key] ?? '')); 
 function yes(string $key): bool { return in_array(strtolower(post($key)), ['1','on','yes','true'], true); }
 function cleanHeader(string $s): string { return preg_replace('/[\r\n]+/u',' ',trim($s)) ?? ''; }
 function encHeader(string $s): string { return '=?UTF-8?B?'.base64_encode($s).'?='; }
+function ulen(string $s): int { return function_exists('mb_strlen') ? mb_strlen($s, 'UTF-8') : strlen($s); }
+function usub(string $s, int $start, int $len): string { return function_exists('mb_substr') ? mb_substr($s,$start,$len,'UTF-8') : substr($s,$start,$len); }
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') fail('Метод не поддерживается', 405);
-
-// Honeypot: bots usually fill this hidden field. Return success without sending.
 if (post('company_website') !== '') ok();
 
 $name = post('name');
@@ -46,18 +46,17 @@ $pageTitle = post('page_title');
 $newsletter = yes('newsletter');
 $consent = yes('consent');
 
-if ($name === '' || mb_strlen($name) > 100) fail('Укажите имя');
-if (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 160) fail('Укажите корректный E-mail');
-if ($message === '' || mb_strlen($message) > 1000) fail('Опишите задачу (до 1000 знаков)');
+if ($name === '' || ulen($name) > 100) fail('Укажите имя');
+if (!filter_var($email, FILTER_VALIDATE_EMAIL) || ulen($email) > 160) fail('Укажите корректный E-mail');
+if ($message === '' || ulen($message) > 1000) fail('Опишите задачу (до 1000 знаков)');
 if (!$consent) fail('Необходимо согласие на обработку персональных данных');
 if ($phone !== '') {
     $digits = preg_replace('/\D+/', '', $phone) ?? '';
     if (strlen($digits) !== 11 || !in_array($digits[0] ?? '', ['7','8'], true)) fail('Укажите корректный номер телефона');
 }
-if (mb_strlen($pageUrl) > 500) $pageUrl = mb_substr($pageUrl,0,500);
-if (mb_strlen($pageTitle) > 200) $pageTitle = mb_substr($pageTitle,0,200);
+if (ulen($pageUrl) > 500) $pageUrl = usub($pageUrl,0,500);
+if (ulen($pageTitle) > 200) $pageTitle = usub($pageTitle,0,200);
 
-// Simple per-IP rate limiting: max 1 request per 20 sec and 10 per hour.
 $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 $key = hash('sha256', $ip . '|opproject-contact');
 $rateFile = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'opform_' . $key . '.json';
@@ -67,7 +66,7 @@ if (is_file($rateFile)) {
     $decoded = json_decode((string)@file_get_contents($rateFile), true);
     if (is_array($decoded)) $rate = array_merge($rate,$decoded);
 }
-$hits = array_values(array_filter((array)$rate['hits'], fn($t)=>is_numeric($t) && (int)$t > $now-3600));
+$hits = array_values(array_filter((array)$rate['hits'], function($t) use ($now) { return is_numeric($t) && (int)$t > $now-3600; }));
 if (($now-(int)$rate['last']) < 20 || count($hits) >= 10) fail('Слишком много отправок. Попробуйте немного позже.', 429);
 $hits[]=$now;
 @file_put_contents($rateFile, json_encode(['last'=>$now,'hits'=>$hits]), LOCK_EX);
