@@ -1,0 +1,66 @@
+name: Archive original site images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'source-image-originals.tsv'
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Download exact original images referenced by archived MHTML
+        shell: python
+        run: |
+          import csv, pathlib, urllib.request, time
+          out = pathlib.Path('assets/originals')
+          out.mkdir(parents=True, exist_ok=True)
+          missing=[]
+          ok=[]
+          with open('source-image-originals.tsv', encoding='utf-8') as f:
+              rows=csv.DictReader(f, delimiter='\t')
+              for row in rows:
+                  url=row['url']
+                  name=row['filename']
+                  p=out/name
+                  try:
+                      req=urllib.request.Request(url, headers={'User-Agent':'Mozilla/5.0'})
+                      with urllib.request.urlopen(req, timeout=30) as r:
+                          data=r.read()
+                      if len(data) < 100:
+                          raise RuntimeError(f'too small: {len(data)}')
+                      p.write_bytes(data)
+                      ok.append((url,name,len(data)))
+                      print('OK', len(data), name)
+                  except Exception as e:
+                      missing.append((url,name,repr(e)))
+                      print('MISS', name, e)
+                  time.sleep(0.05)
+          with open('source-image-archive-status.tsv','w',encoding='utf-8',newline='') as f:
+              w=csv.writer(f,delimiter='\t')
+              w.writerow(['status','filename','bytes_or_error','url'])
+              for url,name,n in ok:
+                  w.writerow(['archived',name,n,url])
+              for url,name,err in missing:
+                  w.writerow(['missing',name,err,url])
+          print(f'Archived {len(ok)}; missing {len(missing)}')
+
+      - name: Commit archive
+        shell: bash
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/originals source-image-archive-status.tsv
+          git commit -m 'Archive original images from source site' || exit 0
+          git push origin HEAD:main
