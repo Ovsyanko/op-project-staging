@@ -1,5 +1,5 @@
 name: Build op-co.ru FTP package
-# package revision 2
+# package revision 3
 
 on:
   push:
@@ -53,10 +53,10 @@ jobs:
           print('updated',n,'text files; injected contact client into',injected,'HTML files')
           PY
 
+          # HTTPS is terminated by REG.RU nginx in front of Apache/FastCGI.
+          # Do not force HTTPS here: Apache may see HTTPS=off behind the proxy,
+          # which causes a redirect loop on already-HTTPS requests.
           cat > dist/.htaccess <<'EOF'
-          RewriteEngine On
-          RewriteCond %{HTTPS} !=on
-          RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
           DirectoryIndex index.html
           <IfModule mod_headers.c>
             Header set X-Robots-Tag "noindex, nofollow, noarchive"
