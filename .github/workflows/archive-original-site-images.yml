@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'source-image-originals.tsv'
+      - '.github/workflows/archive-original-site-images.yml'
 
 permissions:
   contents: write
