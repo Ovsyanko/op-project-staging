@@ -31,20 +31,31 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           root=Path('dist')
-          text_exts={'.html','.css','.js','.md','.txt','.csv','.tsv','.xml','.json','.map'}
+          text_exts={'.html','.css','.js','.php','.md','.txt','.csv','.tsv','.xml','.json','.map'}
           n=0
+          injected=0
           for p in root.rglob('*'):
               if not p.is_file(): continue
               if p.name=='.htaccess' or p.suffix.lower() in text_exts:
                   try: s=p.read_text(encoding='utf-8')
                   except UnicodeDecodeError: continue
                   ns=s.replace('/op-project-staging','')
+                  if p.suffix.lower()=='.html' and '/assets/contact-form.js' not in ns:
+                      tag='<script src="/assets/contact-form.js" defer></script>'
+                      if '</body>' in ns:
+                          ns=ns.replace('</body>',tag+'</body>',1)
+                      else:
+                          ns+=tag
+                      injected+=1
                   if ns!=s:
                       p.write_text(ns,encoding='utf-8'); n+=1
-          print('updated',n,'text files')
+          print('updated',n,'text files; injected contact client into',injected,'HTML files')
           PY
 
           cat > dist/.htaccess <<'EOF'
+          RewriteEngine On
+          RewriteCond %{HTTPS} !=on
+          RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
           DirectoryIndex index.html
           <IfModule mod_headers.c>
             Header set X-Robots-Tag "noindex, nofollow, noarchive"
@@ -61,16 +72,21 @@ jobs:
           if grep -RIl '/op-project-staging' dist --exclude='*.woff2' --exclude='*.webp' --exclude='*.jpg' --exclude='*.jpeg' --exclude='*.png' --exclude='*.gif' | grep .; then exit 1; fi
           test -f dist/index.html
           test -f dist/assets/site-shell.js
+          test -f dist/assets/contact-form.js
+          test -f dist/api/contact.php
+          test -f dist/api/contact-config.example.php
           test -f dist/pellets/index.html
           test -f dist/agro/index.html
           test -f dist/contacts/index.html
           test ! -d dist/assets/originals
+          grep -q '/assets/contact-form.js' dist/pellets/index.html
+          grep -q '/assets/contact-form.js' dist/contacts/index.html
 
       - name: Zip
-        run: cd dist && zip -qr ../op-co.ru-production-root-ready.zip .
+        run: cd dist && zip -qr ../op-co.ru-production-with-forms.zip .
 
       - uses: actions/upload-artifact@v4
         with:
-          name: op-co.ru-production-root-ready
-          path: op-co.ru-production-root-ready.zip
+          name: op-co.ru-production-with-forms
+          path: op-co.ru-production-with-forms.zip
           if-no-files-found: error
