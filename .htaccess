@@ -1,0 +1,19 @@
+RewriteEngine On
+
+# Keep the test copy out of search indexes.
+<IfModule mod_headers.c>
+  Header set X-Robots-Tag "noindex, nofollow, noarchive"
+</IfModule>
+
+# Static files are served directly from the preserved staging subdirectory.
+RewriteRule ^op-project-staging/(.+\.[A-Za-z0-9]+)$ - [L]
+
+# Hide the GitHub staging prefix from visible page URLs.
+RewriteRule ^op-project-staging/?$ / [R=302,L]
+RewriteRule ^op-project-staging/(.+)/?$ /$1 [R=302,L]
+
+# Serve all root URLs internally from the preserved staging tree.
+RewriteCond %{REQUEST_URI} !^/op-project-staging/
+RewriteRule ^(.*)$ /op-project-staging/$1 [L]
+
+DirectoryIndex index.html
