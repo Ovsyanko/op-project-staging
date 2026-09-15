@@ -64,4 +64,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add assets/originals source-image-archive-status.tsv
           git commit -m 'Archive original images from source site' || exit 0
+          git pull --rebase origin main
           git push origin HEAD:main
