@@ -1,4 +1,5 @@
 name: Build op-co.ru FTP package
+# package revision 2
 
 on:
   push:
