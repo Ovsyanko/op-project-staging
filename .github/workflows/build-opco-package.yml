@@ -21,7 +21,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          rsync -a --exclude='.git' --exclude='.github' --exclude='tools' ./ dist/
+          rsync -a \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='tools' \
+            --exclude='assets/originals' \
+            ./ dist/
 
           python3 - <<'PY'
           from pathlib import Path
@@ -59,12 +64,13 @@ jobs:
           test -f dist/pellets/index.html
           test -f dist/agro/index.html
           test -f dist/contacts/index.html
+          test ! -d dist/assets/originals
 
       - name: Zip
-        run: cd dist && zip -qr ../op-co.ru-production.zip .
+        run: cd dist && zip -qr ../op-co.ru-production-root-ready.zip .
 
       - uses: actions/upload-artifact@v4
         with:
-          name: op-co.ru-production
-          path: op-co.ru-production.zip
+          name: op-co.ru-production-root-ready
+          path: op-co.ru-production-root-ready.zip
           if-no-files-found: error
