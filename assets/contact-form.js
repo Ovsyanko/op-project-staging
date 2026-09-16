@@ -75,12 +75,21 @@
     let hp=form.querySelector('[name="company_website"]');
     if(!hp){hp=document.createElement('input');hp.type='text';hp.name='company_website';hp.tabIndex=-1;hp.autocomplete='off';hp.setAttribute('aria-hidden','true');hp.style.cssText='position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;opacity:0!important';form.append(hp);}
 
-    let submit=form.querySelector('button[type="submit"],button:not([type]),.form-btn');
+    // Reuse the form's existing Send button regardless of whether the source markup
+    // declared it as type="button". Some reconstructed pages use type="button";
+    // the old selector ignored those buttons and appended a second submit button.
+    let submit=[...form.querySelectorAll('button,.form-btn')].find(el=>/отправить/i.test((el.textContent||'').trim()))
+      || form.querySelector('button[type="submit"],button[type="button"],button:not([type]),.form-btn');
     if(submit && submit.tagName==='A'){
       const b=document.createElement('button'); b.type='submit'; b.className=submit.className; b.textContent='Отправить'; submit.replaceWith(b); submit=b;
     }
     if(!submit){submit=document.createElement('button');submit.type='submit';submit.textContent='Отправить';form.append(submit);}
     if(submit.tagName==='BUTTON') submit.type='submit';
+
+    // Defensive cleanup in case a page contains more than one legacy Send control.
+    [...form.querySelectorAll('button,.form-btn')].forEach(el=>{
+      if(el!==submit && /отправить/i.test((el.textContent||'').trim())) el.remove();
+    });
 
     [...form.querySelectorAll('small')].forEach(s=>{if(/staging|не отправляет|электронной почте/i.test(s.textContent))s.remove();});
     let status=document.createElement('div');status.className='op-form-status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');form.append(status);
