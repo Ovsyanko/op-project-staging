@@ -1,5 +1,5 @@
 name: Build op-co.ru FTP package
-# package revision 3
+# package revision 4
 
 on:
   push:
@@ -34,23 +34,73 @@ jobs:
           root=Path('dist')
           text_exts={'.html','.css','.js','.php','.md','.txt','.csv','.tsv','.xml','.json','.map'}
           n=0
-          injected=0
+          form_injected=0
+          metrika_injected=0
+
+          metrika_head='''<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=108782713', 'ym');
+
+    ym(108782713, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
+</script>
+<!-- /Yandex.Metrika counter -->'''
+          metrika_body='''<!-- Yandex.Metrika counter noscript -->
+<noscript><div><img src="https://mc.yandex.ru/watch/108782713" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter noscript -->'''
+
           for p in root.rglob('*'):
-              if not p.is_file(): continue
+              if not p.is_file():
+                  continue
               if p.name=='.htaccess' or p.suffix.lower() in text_exts:
-                  try: s=p.read_text(encoding='utf-8')
-                  except UnicodeDecodeError: continue
+                  try:
+                      s=p.read_text(encoding='utf-8')
+                  except UnicodeDecodeError:
+                      continue
                   ns=s.replace('/op-project-staging','')
-                  if p.suffix.lower()=='.html' and '/assets/contact-form.js' not in ns:
-                      tag='<script src="/assets/contact-form.js" defer></script>'
-                      if '</body>' in ns:
-                          ns=ns.replace('</body>',tag+'</body>',1)
-                      else:
-                          ns+=tag
-                      injected+=1
+
+                  if p.suffix.lower()=='.html':
+                      if '/assets/contact-form.js' not in ns:
+                          tag='<script src="/assets/contact-form.js" defer></script>'
+                          if '</body>' in ns:
+                              ns=ns.replace('</body>',tag+'</body>',1)
+                          else:
+                              ns+=tag
+                          form_injected+=1
+
+                      if 'mc.yandex.ru/metrika/tag.js?id=108782713' not in ns:
+                          low=ns.lower()
+                          head_pos=low.find('<head')
+                          if head_pos!=-1:
+                              head_end=ns.find('>',head_pos)
+                              if head_end!=-1:
+                                  ns=ns[:head_end+1]+'\n'+metrika_head+'\n'+ns[head_end+1:]
+                              else:
+                                  ns=metrika_head+'\n'+ns
+                          else:
+                              ns=metrika_head+'\n'+ns
+
+                          low=ns.lower()
+                          body_pos=low.find('<body')
+                          if body_pos!=-1:
+                              body_end=ns.find('>',body_pos)
+                              if body_end!=-1:
+                                  ns=ns[:body_end+1]+'\n'+metrika_body+'\n'+ns[body_end+1:]
+                              else:
+                                  ns+='\n'+metrika_body
+                          else:
+                              ns+='\n'+metrika_body
+                          metrika_injected+=1
+
                   if ns!=s:
-                      p.write_text(ns,encoding='utf-8'); n+=1
-          print('updated',n,'text files; injected contact client into',injected,'HTML files')
+                      p.write_text(ns,encoding='utf-8')
+                      n+=1
+
+          print('updated',n,'text files; injected contact client into',form_injected,'HTML files; injected Yandex Metrika into',metrika_injected,'HTML files')
           PY
 
           # HTTPS is terminated by REG.RU nginx in front of Apache/FastCGI.
@@ -82,12 +132,16 @@ jobs:
           test ! -d dist/assets/originals
           grep -q '/assets/contact-form.js' dist/pellets/index.html
           grep -q '/assets/contact-form.js' dist/contacts/index.html
+          grep -q 'mc.yandex.ru/metrika/tag.js?id=108782713' dist/index.html
+          grep -q 'mc.yandex.ru/watch/108782713' dist/index.html
+          grep -q 'mc.yandex.ru/metrika/tag.js?id=108782713' dist/pellets/index.html
+          grep -q 'mc.yandex.ru/metrika/tag.js?id=108782713' dist/contacts/index.html
 
       - name: Zip
-        run: cd dist && zip -qr ../op-co.ru-production-with-forms.zip .
+        run: cd dist && zip -qr ../op-co.ru-production-with-forms-metrika.zip .
 
       - uses: actions/upload-artifact@v4
         with:
-          name: op-co.ru-production-with-forms
-          path: op-co.ru-production-with-forms.zip
+          name: op-co.ru-production-with-forms-metrika
+          path: op-co.ru-production-with-forms-metrika.zip
           if-no-files-found: error
