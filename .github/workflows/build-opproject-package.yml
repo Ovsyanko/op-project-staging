@@ -23,7 +23,7 @@ jobs:
           set -euo pipefail
           rm -rf dist
           mkdir -p dist
-          rsync -a --exclude='.git' --exclude='.github' --exclude='tools' --exclude='assets/originals' ./ dist/
+          rsync -a --exclude='.git' --exclude='.github' --exclude='tools' --exclude='legacy' --exclude='assets/originals' ./ dist/
 
           python3 - <<'PY'
           from pathlib import Path
