@@ -1,0 +1,98 @@
+name: Build composite page hotfix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-composite-fix.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: reg-ru-production
+
+      - name: Prepare hotfix packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf patch-opco patch-opproject
+          mkdir -p patch-opco/composite patch-opco/assets/images
+          mkdir -p patch-opproject/composite patch-opproject/assets/images
+
+          cp assets/images/vihrolyt-samples.png patch-opco/assets/images/
+          cp assets/images/vihrolyt-wa0003.jpg patch-opco/assets/images/
+          cp assets/images/vihrolyt-wa0004.jpg patch-opco/assets/images/
+          cp assets/images/vihrolyt-samples.png patch-opproject/assets/images/
+          cp assets/images/vihrolyt-wa0003.jpg patch-opproject/assets/images/
+          cp assets/images/vihrolyt-wa0004.jpg patch-opproject/assets/images/
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, html
+
+          src = Path('composite/index.html').read_text(encoding='utf-8')
+          base = src.replace('/op-project-staging','')
+
+          metrika_head = '''<!-- Yandex.Metrika counter -->
+          <script type="text/javascript">
+          (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r){return;}}k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})(window,document,'script','https://mc.yandex.ru/metrika/tag.js?id=108782713','ym');
+          ym(108782713,'init',{ssr:true,webvisor:true,clickmap:true,ecommerce:"dataLayer",referrer:document.referrer,url:location.href,accurateTrackBounce:true,trackLinks:true});
+          </script>
+          <!-- /Yandex.Metrika counter -->'''
+          metrika_body = '<noscript><div><img src="https://mc.yandex.ru/watch/108782713" style="position:absolute;left:-9999px" alt=""></div></noscript>'
+
+          def inject_common(s):
+              if 'mc.yandex.ru/metrika/tag.js?id=108782713' not in s:
+                  s = re.sub(r'(<head[^>]*>)', r'\1\n'+metrika_head, s, count=1, flags=re.I)
+                  s = re.sub(r'(<body[^>]*>)', r'\1\n'+metrika_body, s, count=1, flags=re.I)
+              if '/assets/contact-form.js' not in s:
+                  s = re.sub(r'</body>', '<script src="/assets/contact-form.js" defer></script></body>', s, count=1, flags=re.I)
+              return s
+
+          # op-co.ru: keep test-domain noindex.
+          opco = inject_common(base)
+          Path('patch-opco/composite/index.html').write_text(opco, encoding='utf-8')
+
+          # op-project.ru: indexable production SEO.
+          opp = base
+          opp = re.sub(r'<meta\s+name=["\']robots["\'][^>]*>', '', opp, flags=re.I)
+          opp = re.sub(r'<title>.*?</title>', '<title>Композитные материалы из древесины и биомассы — ОП Проект</title>', opp, count=1, flags=re.I|re.S)
+          seo = '''<meta name="robots" content="index,follow,max-image-preview:large">
+          <meta name="description" content="Композитные материалы на основе древесных отходов и минерального связующего. Разработка строительных плит и изделий из щепы, опилок и другой биомассы.">
+          <meta name="keywords" content="древесные композиты, композитные материалы, Вихролит, древесные отходы, минеральное связующее">
+          <link rel="canonical" href="https://op-project.ru/composite/">
+          <meta property="og:type" content="website">
+          <meta property="og:title" content="Композитные материалы из древесины и биомассы — ОП Проект">
+          <meta property="og:description" content="Композитные материалы на основе древесных отходов и минерального связующего.">
+          <meta property="og:url" content="https://op-project.ru/composite/">
+          <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"ОП Проект","url":"https://op-project.ru/","email":"sales@op-project.ru"}</script>'''
+          opp = re.sub(r'(<head[^>]*>)', r'\1\n'+seo, opp, count=1, flags=re.I)
+          opp = inject_common(opp)
+          Path('patch-opproject/composite/index.html').write_text(opp, encoding='utf-8')
+          PY
+
+          grep -q 'home-composite-original.png' patch-opco/composite/index.html
+          grep -q 'vihrolyt-samples.png' patch-opco/composite/index.html
+          test -f patch-opco/assets/images/vihrolyt-wa0003.jpg
+          test -f patch-opco/assets/images/vihrolyt-wa0004.jpg
+          grep -q 'canonical' patch-opproject/composite/index.html
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: composite-fix-op-co-root
+          path: patch-opco/
+          include-hidden-files: true
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: composite-fix-op-project-root
+          path: patch-opproject/
+          include-hidden-files: true
+          if-no-files-found: error
