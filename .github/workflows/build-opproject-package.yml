@@ -1,0 +1,306 @@
+name: Build op-project.ru production package
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/build-opproject-package.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: reg-ru-production
+
+      - name: Prepare op-project.ru production tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf dist
+          mkdir -p dist
+          rsync -a \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='tools' \
+            --exclude='assets/originals' \
+            ./ dist/
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, html
+          from urllib.parse import quote
+
+          root = Path('dist')
+          DOMAIN = 'https://op-project.ru'
+          COUNTER = '108782713'
+
+          seo = {
+            '/': (
+              'ОП Проект — оборудование и технологии переработки древесины и биомассы',
+              'Проектирование, подбор и поставка оборудования для переработки древесины и биомассы: сушка, измельчение, гранулирование, брикетирование и энергоутилизация.',
+              'оборудование для переработки древесины, переработка биомассы, технологические линии, ОП Проект'),
+            '/pellets/': (
+              'Оборудование для производства пеллет и топливных брикетов — ОП Проект',
+              'Проектирование линий производства пеллет и топливных брикетов: измельчение, сушка, гранулирование, охлаждение, просеивание и фасовка.',
+              'оборудование для производства пеллет, линия гранулирования, пеллетный завод, топливные брикеты'),
+            '/briquetting/': (
+              'Брикетирование древесных отходов и биомассы — ОП Проект',
+              'Оборудование и технологические решения для брикетирования опилок, стружки и другой биомассы. Подбор технологии и комплектация линий.',
+              'брикетирование опилок, оборудование для брикетов, пресс для брикетов, топливные брикеты'),
+            '/drying/': (
+              'Промышленная сушка древесины и биомассы — оборудование и технологии',
+              'Подбор и проектирование оборудования для сушки опилок, щепы, стружки и другой биомассы: барабанные, ленточные и другие сушильные решения.',
+              'сушка опилок, сушка щепы, сушилка для биомассы, барабанная сушилка, ленточная сушилка'),
+            '/grinding/': (
+              'Измельчение древесины и биомассы — оборудование — ОП Проект',
+              'Оборудование для первичного и тонкого измельчения древесных отходов и биомассы: щепа, опилки, стружка и технологическое сырьё.',
+              'измельчение древесины, дробилка древесины, молотковая мельница, измельчение биомассы'),
+            '/combustion/': (
+              'Сжигание биомассы и древесных отходов — ОП Проект',
+              'Технологические решения для сжигания древесного топлива и биомассы, получения тепла и интеграции теплогенерации в производственные линии.',
+              'сжигание биомассы, теплогенератор на биомассе, древесные отходы, котельная на биомассе'),
+            '/heat-recovery/': (
+              'Утилизация тепла и рекуперация в производстве — ОП Проект',
+              'Решения по возврату и полезному использованию тепла в технологических процессах переработки древесины и биомассы.',
+              'утилизация тепла, рекуперация тепла, энергоэффективность производства, теплообменник'),
+            '/charcoal/': (
+              'Производство древесного угля и пиролиз биомассы — ОП Проект',
+              'Оборудование и технологии пиролиза древесины и биомассы для производства древесного угля и углеродных продуктов.',
+              'производство древесного угля, пиролиз древесины, печь для древесного угля, древесноугольные брикеты'),
+            '/presswood/': (
+              'Прессованные изделия из древесных отходов — ОП Проект',
+              'Технологии и оборудование для производства прессованных изделий из древесных отходов, включая формованные и транспортные изделия.',
+              'прессованные древесные изделия, прессованные поддоны, древесные отходы, формованные изделия'),
+            '/composite/': (
+              'Композитные материалы из древесины и биомассы — ОП Проект',
+              'Технологические решения для производства древесных и биокомпозитных материалов из подготовленного растительного сырья.',
+              'древесные композиты, древесно-полимерные композиты, биокомпозиты, древесная мука'),
+            '/agro/': (
+              'Переработка сельскохозяйственных отходов и биомассы — ОП Проект',
+              'Технологические решения для переработки агробиомассы и сельскохозяйственных отходов в топливо, материалы и другую товарную продукцию.',
+              'переработка агроотходов, агробиомасса, сельскохозяйственные отходы, переработка соломы'),
+            '/poultry/': (
+              'Переработка отходов птицеводства — технологии и оборудование',
+              'Инженерные решения для переработки побочных продуктов и отходов птицеводческих предприятий с получением полезной продукции и энергии.',
+              'переработка отходов птицеводства, птицеводческие отходы, биомасса, утилизация отходов'),
+            '/food/': (
+              'Переработка органических отходов пищевых производств — ОП Проект',
+              'Технологические решения для подготовки, сушки и переработки органических побочных продуктов пищевой промышленности.',
+              'переработка пищевых отходов, органические отходы, сушка отходов, утилизация отходов'),
+            '/energy/': (
+              'Энергетическое использование биомассы — ОП Проект',
+              'Оборудование и технологические решения для производства тепловой энергии из древесной и сельскохозяйственной биомассы.',
+              'энергетика на биомассе, топливо из биомассы, тепловая энергия, древесное топливо'),
+            '/tech-project/': (
+              'Технологическое проектирование производств — ОП Проект',
+              'Технологическое проектирование линий и производств: разработка решений, подбор оборудования, компоновка и подготовка к реализации проекта.',
+              'технологическое проектирование, проектирование производства, проектирование завода, инжиниринг'),
+            '/optimisation/': (
+              'Оптимизация производственных процессов — ОП Проект',
+              'Анализ и оптимизация технологических линий: производительность, энергозатраты, узкие места, качество продукта и эксплуатационные расходы.',
+              'оптимизация производства, повышение производительности, снижение энергозатрат, технологический процесс'),
+            '/tech-audit/': (
+              'Технологический аудит производства — ОП Проект',
+              'Технологический аудит действующих производств и линий с выявлением ограничений, потерь и возможностей модернизации.',
+              'технологический аудит, аудит производства, модернизация оборудования, эффективность производства'),
+            '/revision/': (
+              'Ревизия и модернизация промышленного оборудования — ОП Проект',
+              'Диагностика, ревизия и модернизация технологического оборудования и производственных линий.',
+              'ревизия оборудования, модернизация оборудования, промышленное оборудование, диагностика'),
+            '/supply/': (
+              'Поставка промышленного и технологического оборудования — ОП Проект',
+              'Подбор, комплектация и поставка оборудования для линий переработки древесины, биомассы и производственных отходов.',
+              'поставка промышленного оборудования, технологическое оборудование, комплектация линии, оборудование для биомассы'),
+            '/plant/': (
+              'Комплектные производственные линии и заводы — ОП Проект',
+              'Разработка и комплектация производственных линий и заводов для переработки древесины, биомассы и отходов.',
+              'комплектный завод, производственная линия, оборудование завода, переработка древесины'),
+            '/installation/': (
+              'Монтаж и пусконаладка технологического оборудования — ОП Проект',
+              'Организация монтажа, шефмонтажа и пусконаладки технологического оборудования и производственных линий.',
+              'монтаж оборудования, пусконаладка, шефмонтаж, промышленное оборудование'),
+            '/contacts/': (
+              'Контакты ОП Проект',
+              'Контактная информация ОП Проект. Обсудите оборудование, технологию, модернизацию или новый производственный проект.',
+              'ОП Проект контакты, оборудование, технологический проект'),
+            '/offers/': (
+              'Предложения и оборудование — ОП Проект',
+              'Актуальные предложения ОП Проект по технологическому оборудованию, производственным линиям и отдельным узлам.',
+              'промышленное оборудование, технологическое оборудование, оборудование бу'),
+            '/reference/': (
+              'Реализованные проекты и референции — ОП Проект',
+              'Опыт и реализованные проекты ОП Проект в области оборудования и технологий переработки древесины и биомассы.',
+              'референции ОП Проект, реализованные проекты, переработка древесины, биомасса'),
+            '/policy/': (
+              'Политика обработки персональных данных — ОП Проект',
+              'Политика обработки персональных данных на сайте ОП Проект.',
+              'политика персональных данных ОП Проект'),
+          }
+
+          metrika_head = f'''<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){{
+        m[i]=m[i]||function(){{(m[i].a=m[i].a||[]).push(arguments)}};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {{if (document.scripts[j].src === r) {{ return; }}}}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    }})(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id={COUNTER}', 'ym');
+    ym({COUNTER}, 'init', {{ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true}});
+</script>
+<!-- /Yandex.Metrika counter -->'''
+          metrika_body = f'''<!-- Yandex.Metrika counter noscript -->
+<noscript><div><img src="https://mc.yandex.ru/watch/{COUNTER}" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter noscript -->'''
+
+          def canonical_path(p: Path):
+              rel = p.relative_to(root).as_posix()
+              if rel == 'index.html': return '/'
+              if rel.endswith('/index.html'): return '/' + rel[:-10]
+              if rel.endswith('.html'): return '/' + rel
+              return '/' + rel
+
+          def clean_head(s):
+              patterns = [
+                r'<meta\s+name=["\']robots["\'][^>]*>\s*',
+                r'<meta\s+name=["\']description["\'][^>]*>\s*',
+                r'<meta\s+name=["\']keywords["\'][^>]*>\s*',
+                r'<link\s+rel=["\']canonical["\'][^>]*>\s*',
+                r'<meta\s+property=["\']og:(?:title|description|url|type)["\'][^>]*>\s*',
+              ]
+              for pat in patterns:
+                  s = re.sub(pat, '', s, flags=re.I)
+              return s
+
+          canonical_urls = []
+          aliases = []
+          updated = 0
+
+          for p in root.rglob('*'):
+              if not p.is_file():
+                  continue
+              if p.name == '.htaccess' or p.suffix.lower() in {'.html','.css','.js','.php','.md','.txt','.csv','.tsv','.xml','.json','.map'}:
+                  try: s = p.read_text(encoding='utf-8')
+                  except UnicodeDecodeError: continue
+                  ns = s.replace('/op-project-staging','')
+
+                  if p.suffix.lower() == '.html':
+                      ns = clean_head(ns)
+                      cpath = canonical_path(p)
+                      rel = p.relative_to(root).as_posix()
+                      is_404 = rel == '404.html'
+                      is_alias = rel.endswith('.html') and '/' not in rel and rel not in ('index.html','404.html') and (root / rel[:-5] / 'index.html').exists()
+                      if is_alias:
+                          aliases.append((rel, '/' + rel[:-5] + '/'))
+
+                      target_path = ('/' + rel[:-5] + '/') if is_alias else cpath
+                      title0 = re.search(r'<title>(.*?)</title>', ns, flags=re.I|re.S)
+                      existing_title = html.unescape(re.sub(r'\s+',' ',title0.group(1)).strip()) if title0 else 'ОП Проект'
+                      title, desc, keys = seo.get(target_path, (existing_title, 'ОП Проект — оборудование, технологии и инженерные решения для переработки древесины, биомассы и производственных отходов.', 'ОП Проект, промышленное оборудование, переработка древесины, биомасса'))
+
+                      if title0:
+                          ns = re.sub(r'<title>.*?</title>', '<title>'+html.escape(title)+'</title>', ns, count=1, flags=re.I|re.S)
+                      else:
+                          ns = re.sub(r'<head([^>]*)>', r'<head\1><title>'+html.escape(title)+'</title>', ns, count=1, flags=re.I)
+
+                      canonical = DOMAIN + target_path
+                      robots = 'noindex,nofollow' if is_404 else 'index,follow,max-image-preview:large'
+                      meta = (
+                        f'<meta name="robots" content="{robots}">\n'
+                        f'<meta name="description" content="{html.escape(desc, quote=True)}">\n'
+                        f'<meta name="keywords" content="{html.escape(keys, quote=True)}">\n'
+                        f'<link rel="canonical" href="{canonical}">\n'
+                        f'<meta property="og:type" content="website">\n'
+                        f'<meta property="og:title" content="{html.escape(title, quote=True)}">\n'
+                        f'<meta property="og:description" content="{html.escape(desc, quote=True)}">\n'
+                        f'<meta property="og:url" content="{canonical}">\n'
+                      )
+                      ld = (
+                        '<script type="application/ld+json">'
+                        '{"@context":"https://schema.org","@type":"Organization","name":"ОП Проект","url":"https://op-project.ru/","email":"sales@op-project.ru"}'
+                        '</script>\n'
+                      )
+                      m = re.search(r'<head[^>]*>', ns, flags=re.I)
+                      if m:
+                          insert = m.end()
+                          ns = ns[:insert] + '\n' + metrika_head + '\n' + meta + ld + ns[insert:]
+                      else:
+                          ns = metrika_head + '\n' + meta + ld + ns
+
+                      if f'mc.yandex.ru/watch/{COUNTER}' not in ns:
+                          m = re.search(r'<body[^>]*>', ns, flags=re.I)
+                          if m:
+                              insert = m.end()
+                              ns = ns[:insert] + '\n' + metrika_body + '\n' + ns[insert:]
+                          else:
+                              ns += '\n' + metrika_body
+
+                      if '/assets/contact-form.js' not in ns and not is_404:
+                          tag='<script src="/assets/contact-form.js" defer></script>'
+                          if re.search(r'</body>', ns, flags=re.I):
+                              ns=re.sub(r'</body>', tag+'</body>', ns, count=1, flags=re.I)
+                          else:
+                              ns += tag
+
+                      if not is_404 and not is_alias and (rel == 'index.html' or rel.endswith('/index.html')):
+                          canonical_urls.append(canonical)
+
+                  if ns != s:
+                      p.write_text(ns, encoding='utf-8')
+                      updated += 1
+
+          # Root-ready production .htaccess. No HTTPS rule here because REG.RU terminates TLS at nginx.
+          ht = [
+            'DirectoryIndex index.html',
+            'ErrorDocument 404 /404.html',
+            '',
+            'RewriteEngine On',
+            'RewriteCond %{HTTP_HOST} ^www\\.op-project\\.ru$ [NC]',
+            'RewriteRule ^(.*)$ https://op-project.ru/$1 [R=301,L]',
+            ''
+          ]
+          for src, dst in sorted(set(aliases)):
+              ht.append(f'RewriteRule ^{re.escape(src)}$ {dst} [R=301,L]')
+          ht.append('')
+          (root/'.htaccess').write_text('\n'.join(ht), encoding='utf-8')
+
+          (root/'robots.txt').write_text('User-agent: *\nAllow: /\n\nSitemap: https://op-project.ru/sitemap.xml\n', encoding='utf-8')
+
+          urls = sorted(set(canonical_urls), key=lambda u: (u.count('/'), u))
+          xml = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+          for u in urls:
+              xml += ['  <url>', f'    <loc>{html.escape(u)}</loc>', '  </url>']
+          xml.append('</urlset>')
+          (root/'sitemap.xml').write_text('\n'.join(xml)+'\n', encoding='utf-8')
+
+          print('Updated files:', updated)
+          print('Canonical pages in sitemap:', len(urls))
+          print('Legacy .html redirects:', len(aliases))
+          PY
+
+      - name: Verify production package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist/index.html
+          test -f dist/robots.txt
+          test -f dist/sitemap.xml
+          test -f dist/.htaccess
+          test -f dist/api/contact.php
+          test -f dist/assets/contact-form.js
+          grep -q '108782713' dist/index.html
+          grep -q 'https://op-project.ru/' dist/index.html
+          grep -q 'Sitemap: https://op-project.ru/sitemap.xml' dist/robots.txt
+          if grep -RIl '/op-project-staging' dist --exclude='*.woff2' --exclude='*.webp' --exclude='*.jpg' --exclude='*.jpeg' --exclude='*.png' --exclude='*.gif' | grep .; then exit 1; fi
+          if grep -RIl 'noindex,nofollow,noarchive' dist --include='*.html' | grep .; then exit 1; fi
+
+      - name: Upload root-ready site files
+        uses: actions/upload-artifact@v4
+        with:
+          name: op-project.ru-production-root-files
+          path: dist/
+          include-hidden-files: true
+          if-no-files-found: error
