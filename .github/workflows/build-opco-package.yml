@@ -1,5 +1,5 @@
 name: Build op-co.ru FTP package
-# package revision 4
+# package revision 5
 
 on:
   push:
@@ -36,22 +36,24 @@ jobs:
           n=0
           form_injected=0
           metrika_injected=0
-
-          metrika_head='''<!-- Yandex.Metrika counter -->
-<script type="text/javascript">
-    (function(m,e,t,r,i,k,a){
-        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-        m[i].l=1*new Date();
-        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
-        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
-    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=108782713', 'ym');
-
-    ym(108782713, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
-</script>
-<!-- /Yandex.Metrika counter -->'''
-          metrika_body='''<!-- Yandex.Metrika counter noscript -->
-<noscript><div><img src="https://mc.yandex.ru/watch/108782713" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
-<!-- /Yandex.Metrika counter noscript -->'''
+          metrika_head=(
+              '<!-- Yandex.Metrika counter -->\n'
+              '<script type="text/javascript">\n'
+              '    (function(m,e,t,r,i,k,a){\n'
+              '        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};\n'
+              '        m[i].l=1*new Date();\n'
+              '        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}\n'
+              '        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)\n'
+              "    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=108782713', 'ym');\n\n"
+              '    ym(108782713, \'init\', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});\n'
+              '</script>\n'
+              '<!-- /Yandex.Metrika counter -->'
+          )
+          metrika_body=(
+              '<!-- Yandex.Metrika counter noscript -->\n'
+              '<noscript><div><img src="https://mc.yandex.ru/watch/108782713" style="position:absolute; left:-9999px;" alt="" /></div></noscript>\n'
+              '<!-- /Yandex.Metrika counter noscript -->'
+          )
 
           for p in root.rglob('*'):
               if not p.is_file():
@@ -103,9 +105,6 @@ jobs:
           print('updated',n,'text files; injected contact client into',form_injected,'HTML files; injected Yandex Metrika into',metrika_injected,'HTML files')
           PY
 
-          # HTTPS is terminated by REG.RU nginx in front of Apache/FastCGI.
-          # Do not force HTTPS here: Apache may see HTTPS=off behind the proxy,
-          # which causes a redirect loop on already-HTTPS requests.
           cat > dist/.htaccess <<'EOF'
           DirectoryIndex index.html
           <IfModule mod_headers.c>
