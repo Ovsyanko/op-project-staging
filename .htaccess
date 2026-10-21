@@ -1,16 +1,26 @@
-RewriteEngine On
-
-# Keep the temporary op-co.ru copy out of search indexes.
-<IfModule mod_headers.c>
-  Header set X-Robots-Tag "noindex, nofollow, noarchive"
-</IfModule>
-
-# GitHub staging files still contain /op-project-staging/ in many static URLs.
-# Strip that prefix internally for files, so CSS/JS/images/fonts work from domain root.
-RewriteRule ^op-project-staging/(.+\.[A-Za-z0-9]+)$ /$1 [L]
-
-# Hide the GitHub staging prefix from visible page URLs.
-RewriteRule ^op-project-staging/?$ / [R=302,L]
-RewriteRule ^op-project-staging/(.+)/?$ /$1 [R=302,L]
-
 DirectoryIndex index.html
+ErrorDocument 404 /404.html
+
+RewriteEngine On
+RewriteCond %{HTTP_HOST} ^www\.op-project\.ru$ [NC]
+RewriteRule ^(.*)$ https://op-project.ru/$1 [R=301,L]
+
+RewriteRule ^agro\.html$ /agro/ [R=301,L]
+RewriteRule ^callmeback\.html$ /callmeback/ [R=301,L]
+RewriteRule ^charcoal\.html$ /charcoal/ [R=301,L]
+RewriteRule ^composite\.html$ /composite/ [R=301,L]
+RewriteRule ^contacts\.html$ /contacts/ [R=301,L]
+RewriteRule ^drying\.html$ /drying/ [R=301,L]
+RewriteRule ^insulation\.html$ /insulation/ [R=301,L]
+RewriteRule ^offers\.html$ /offers/ [R=301,L]
+RewriteRule ^optimisation\.html$ /optimisation/ [R=301,L]
+RewriteRule ^page\-derevo\.html$ /page-derevo/ [R=301,L]
+RewriteRule ^pellets\.html$ /pellets/ [R=301,L]
+RewriteRule ^plant\.html$ /plant/ [R=301,L]
+RewriteRule ^policy\.html$ /policy/ [R=301,L]
+RewriteRule ^poultry\.html$ /poultry/ [R=301,L]
+RewriteRule ^presswood\.html$ /presswood/ [R=301,L]
+RewriteRule ^referencelist\.html$ /referencelist/ [R=301,L]
+RewriteRule ^revision\.html$ /revision/ [R=301,L]
+RewriteRule ^tech\-audit\.html$ /tech-audit/ [R=301,L]
+RewriteRule ^tech\-project\.html$ /tech-project/ [R=301,L]
