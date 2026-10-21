@@ -1,0 +1,95 @@
+name: Build current REG.RU package
+
+on:
+  push:
+    paths:
+      - ".github/workflows/build-reg-package-current.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout approved staging commit
+        uses: actions/checkout@v4
+        with:
+          ref: adef8a78582439485cd7560dc164a003c58b0e52
+
+      - name: Build production tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/op-project-reg
+          rsync -a --exclude '.git' --exclude '.github' --exclude 'tools' --exclude '.nojekyll' ./ /tmp/op-project-reg/
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root=Path("/tmp/op-project-reg")
+          text_ext={".html",".htm",".css",".js",".json",".xml",".txt",".php"}
+          for p in root.rglob("*"):
+              if not p.is_file() or p.suffix.lower() not in text_ext:
+                  continue
+              try:
+                  s=p.read_text(encoding="utf-8")
+              except UnicodeDecodeError:
+                  continue
+              s=s.replace("/op-project-staging/","/")
+              if p.suffix.lower() in {".html",".htm"}:
+                  s=re.sub(
+                    r'<meta\s+name=["\']robots["\']\s+content=["\']noindex,nofollow,noarchive["\']\s*/?>',
+                    '<meta name="robots" content="index,follow,max-image-preview:large">',
+                    s, flags=re.I
+                  )
+              p.write_text(s,encoding="utf-8")
+          PY
+
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path("/tmp/op-project-reg")
+          bad=[]
+          for p in root.rglob("*"):
+              if not p.is_file():
+                  continue
+              if p.suffix.lower() not in {".html",".htm",".css",".js",".json",".xml",".txt",".php"}:
+                  continue
+              try:
+                  s=p.read_text(encoding="utf-8")
+              except UnicodeDecodeError:
+                  continue
+              if "/op-project-staging/" in s:
+                  bad.append(f"staging prefix: {p}")
+              if "s3.reg.solutions" in s:
+                  bad.append(f"external REG image: {p}")
+          required=[
+            root/"assets/videos/hookah-charcoal-cubes.mp4",
+            root/"assets/images/hookah-charcoal-video-poster.webp",
+            root/"favicon.ico",
+            root/"composite/index.html",
+            root/"charcoal/index.html",
+          ]
+          for p in required:
+              if not p.exists():
+                  bad.append(f"missing required file: {p.relative_to(root)}")
+          c=(root/"charcoal/index.html").read_text(encoding="utf-8")
+          if 'assets/videos/hookah-charcoal-cubes.mp4' not in c:
+              bad.append("hookah video not referenced by charcoal page")
+          comp=(root/"composite/index.html").read_text(encoding="utf-8")
+          if 'favicon.ico' not in comp:
+              bad.append("composite favicon link missing")
+          if bad:
+              raise SystemExit("\n".join(bad))
+          print("Production validation OK")
+          PY
+
+          cd /tmp/op-project-reg
+          zip -qr /tmp/op-project-reg-2026-10-22.zip .
+
+      - name: Upload REG.RU package
+        uses: actions/upload-artifact@v4
+        with:
+          name: op-project-reg-2026-10-22
+          path: /tmp/op-project-reg-2026-10-22.zip
+          retention-days: 30
