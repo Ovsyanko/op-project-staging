@@ -63,7 +63,7 @@ jobs:
               except UnicodeDecodeError:
                   continue
               old=s
-              s=re.sub(r'(["\'\(=])/(?!/|op-project-staging/)', r'\1/op-project-staging/', s)
+              s=re.sub(r'(["\'])/(?!/|op-project-staging/)', r'\1/op-project-staging/', s)
               s=re.sub(r'url\(/(?!/|op-project-staging/)', 'url(/op-project-staging/', s)
               if p.as_posix()=="assets/site-shell.js":
                   s=s.replace("const B=''", "const B='/op-project-staging'").replace('const B=""', 'const B="/op-project-staging"')
