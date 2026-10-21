@@ -1,11 +1,11 @@
-(()=>{
+(()=>{ 
   'use strict';
-  const API = location.hostname.endsWith('github.io') ? 'https://op-co.ru/api/contact.php' : '/api/contact.php';
-  const POLICY = location.hostname.endsWith('github.io') ? '/op-project-staging/policy/' : '/policy/';
+  const API = location.hostname.endsWith('github.io') ? 'https://op-co.ru/api/contact.php' : '/op-project-staging/api/contact.php';
+  const POLICY = location.hostname.endsWith('github.io') ? '/op-project-staging/policy/' : '/op-project-staging/policy/';
 
   function isRequestForm(form){
     if(form.dataset.opContactReady) return false;
-    const text=(form.closest('.request,.contact-card,.request-box,.request-section,.rf')?.textContent||form.parentElement?.textContent||'').toLowerCase();
+    const text=(form.closest('.request,.contact-card,.request-box,.request-section,.rf,.request-form')?.textContent||form.parentElement?.textContent||'').toLowerCase();
     const ta=form.querySelector('textarea');
     return !!ta && (text.includes('сделать запрос') || (ta.placeholder||'').toLowerCase().includes('задач'));
   }
@@ -75,20 +75,29 @@
     let hp=form.querySelector('[name="company_website"]');
     if(!hp){hp=document.createElement('input');hp.type='text';hp.name='company_website';hp.tabIndex=-1;hp.autocomplete='off';hp.setAttribute('aria-hidden','true');hp.style.cssText='position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;opacity:0!important';form.append(hp);}
 
-    // Reuse the form's existing Send button regardless of whether the source markup
-    // declared it as type="button". Some reconstructed pages use type="button";
-    // the old selector ignored those buttons and appended a second submit button.
-    let submit=[...form.querySelectorAll('button,.form-btn')].find(el=>/отправить/i.test((el.textContent||'').trim()))
-      || form.querySelector('button[type="submit"],button[type="button"],button:not([type]),.form-btn');
+    // Reuse any existing visible send button, regardless of its type.
+    let submit=[...form.querySelectorAll('button,a')].find(el=>/^\s*отправить\s*$/i.test(el.textContent||''))
+      || form.querySelector('button[type="submit"],button:not([type]),.form-btn');
+
     if(submit && submit.tagName==='A'){
-      const b=document.createElement('button'); b.type='submit'; b.className=submit.className; b.textContent='Отправить'; submit.replaceWith(b); submit=b;
+      const b=document.createElement('button');
+      b.type='submit';
+      b.className=submit.className;
+      b.textContent='Отправить';
+      submit.replaceWith(b);
+      submit=b;
     }
-    if(!submit){submit=document.createElement('button');submit.type='submit';submit.textContent='Отправить';form.append(submit);}
+    if(!submit){
+      submit=document.createElement('button');
+      submit.type='submit';
+      submit.textContent='Отправить';
+      form.append(submit);
+    }
     if(submit.tagName==='BUTTON') submit.type='submit';
 
-    // Defensive cleanup in case a page contains more than one legacy Send control.
-    [...form.querySelectorAll('button,.form-btn')].forEach(el=>{
-      if(el!==submit && /отправить/i.test((el.textContent||'').trim())) el.remove();
+    // Remove duplicate visible "Отправить" controls, keeping the working submit.
+    [...form.querySelectorAll('button,a')].forEach(el=>{
+      if(el!==submit && /^\s*отправить\s*$/i.test(el.textContent||'')) el.remove();
     });
 
     [...form.querySelectorAll('small')].forEach(s=>{if(/staging|не отправляет|электронной почте/i.test(s.textContent))s.remove();});

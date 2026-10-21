@@ -29,7 +29,7 @@ function ok() {
 }
 function post(string $key): string { return trim((string)($_POST[$key] ?? '')); }
 function yes(string $key): bool { return in_array(strtolower(post($key)), ['1','on','yes','true'], true); }
-function cleanHeader(string $s): string { return preg_replace('/[\r\n]+/u',' ',trim($s)) ?? ''; }
+function cleanHeader(string $s): string { return preg_replace('/op-project-staging/[\r\n]+/u',' ',trim($s)) ?? ''; }
 function encHeader(string $s): string { return '=?UTF-8?B?'.base64_encode($s).'?='; }
 function ulen(string $s): int { return function_exists('mb_strlen') ? mb_strlen($s, 'UTF-8') : strlen($s); }
 function usub(string $s, int $start, int $len): string { return function_exists('mb_substr') ? mb_substr($s,$start,$len,'UTF-8') : substr($s,$start,$len); }
@@ -51,7 +51,7 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL) || ulen($email) > 160) fail('Ук
 if ($message === '' || ulen($message) > 1000) fail('Опишите задачу (до 1000 знаков)');
 if (!$consent) fail('Необходимо согласие на обработку персональных данных');
 if ($phone !== '') {
-    $digits = preg_replace('/\D+/', '', $phone) ?? '';
+    $digits = preg_replace('/op-project-staging/\D+/', '', $phone) ?? '';
     if (strlen($digits) !== 11 || !in_array($digits[0] ?? '', ['7','8'], true)) fail('Укажите корректный номер телефона');
 }
 if (ulen($pageUrl) > 500) $pageUrl = usub($pageUrl,0,500);
@@ -71,7 +71,7 @@ if (($now-(int)$rate['last']) < 20 || count($hits) >= 10) fail('Слишком �
 $hits[]=$now;
 @file_put_contents($rateFile, json_encode(['last'=>$now,'hits'=>$hits]), LOCK_EX);
 
-$configPath = dirname(__DIR__, 2) . '/opproject-contact-config.php';
+$configPath = dirname(__DIR__, 2) . '/op-project-staging/opproject-contact-config.php';
 if (!is_file($configPath)) fail('Форма временно не настроена. Напишите на sales@op-project.ru', 503);
 $config = require $configPath;
 if (!is_array($config)) fail('Ошибка конфигурации формы', 500);
@@ -85,7 +85,7 @@ function smtpRead($fp): array {
         $line=fgets($fp, 8192);
         if ($line===false) break;
         $lines[]=$line;
-        if (preg_match('/^(\d{3})([ -])/', $line, $m)) {
+        if (preg_match('/op-project-staging/^(\d{3})([ -])/', $line, $m)) {
             $code=(int)$m[1];
             if ($m[2]===' ') break;
         }
@@ -145,7 +145,7 @@ try {
     ];
     $data=implode("\r\n",$headers)."\r\n\r\n".str_replace(["\r\n","\r"],"\n",$body);
     $data=str_replace("\n","\r\n",$data);
-    $data=preg_replace('/\r\n\./','\r\n..',$data) ?? $data;
+    $data=preg_replace('/op-project-staging/\r\n\./','\r\n..',$data) ?? $data;
     fwrite($fp,$data."\r\n.\r\n");
     [$code,$text]=smtpRead($fp);
     if ($code!==250) throw new RuntimeException('SMTP '.$code.' '.$text);
