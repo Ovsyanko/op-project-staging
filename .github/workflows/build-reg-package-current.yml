@@ -12,15 +12,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout approved staging commit
+      - name: Checkout verified staging commit
         uses: actions/checkout@v4
         with:
-          ref: adef8a78582439485cd7560dc164a003c58b0e52
+          ref: d516f6ad2533ea81f94fd9e42dc1cf9812b358ee
 
-      - name: Build production tree
+      - name: Build and validate production tree
         shell: bash
         run: |
           set -euo pipefail
+          rm -rf /tmp/op-project-reg
           mkdir -p /tmp/op-project-reg
           rsync -a --exclude '.git' --exclude '.github' --exclude 'tools' --exclude '.nojekyll' ./ /tmp/op-project-reg/
 
@@ -29,6 +30,7 @@ jobs:
           import re
           root=Path("/tmp/op-project-reg")
           text_ext={".html",".htm",".css",".js",".json",".xml",".txt",".php"}
+
           for p in root.rglob("*"):
               if not p.is_file() or p.suffix.lower() not in text_ext:
                   continue
@@ -36,10 +38,13 @@ jobs:
                   s=p.read_text(encoding="utf-8")
               except UnicodeDecodeError:
                   continue
-              s=s.replace("/op-project-staging/","/")
+
+              # Production is hosted at domain root, unlike GitHub Pages project path.
+              s=s.replace("/op-project-staging", "")
+
               if p.suffix.lower() in {".html",".htm"}:
                   s=re.sub(
-                    r'<meta\s+name=["\']robots["\']\s+content=["\']noindex,nofollow,noarchive["\']\s*/?>',
+                    r'<meta\s+name=["\']robots["\'][^>]*>',
                     '<meta name="robots" content="index,follow,max-image-preview:large">',
                     s, flags=re.I
                   )
@@ -48,48 +53,116 @@ jobs:
 
           python3 - <<'PY'
           from pathlib import Path
+          from urllib.parse import urlsplit
+          import re
+
           root=Path("/tmp/op-project-reg")
+          text_ext={".html",".htm",".css",".js",".json",".xml",".txt",".php"}
           bad=[]
+
+          def check_local(raw, source):
+              raw=raw.strip()
+              if not raw or raw.startswith(("#","mailto:","tel:","javascript:","data:","http://","https://","//")):
+                  return
+              if not raw.startswith("/"):
+                  return
+              path=urlsplit(raw).path
+              if path.startswith("/api/"):
+                  return
+              rel=path.lstrip("/")
+              if not rel:
+                  target=root/"index.html"
+              elif path.endswith("/"):
+                  target=root/rel/"index.html"
+              else:
+                  target=root/rel
+              if not target.exists():
+                  bad.append(f"broken local reference in {source}: {raw} -> {target.relative_to(root)}")
+
           for p in root.rglob("*"):
-              if not p.is_file():
-                  continue
-              if p.suffix.lower() not in {".html",".htm",".css",".js",".json",".xml",".txt",".php"}:
+              if not p.is_file() or p.suffix.lower() not in text_ext:
                   continue
               try:
                   s=p.read_text(encoding="utf-8")
               except UnicodeDecodeError:
                   continue
-              if "/op-project-staging/" in s:
-                  bad.append(f"staging prefix: {p}")
+              rel=p.relative_to(root)
+
+              if "/op-project-staging" in s:
+                  bad.append(f"staging prefix remains: {rel}")
               if "s3.reg.solutions" in s:
-                  bad.append(f"external REG image: {p}")
+                  bad.append(f"external REG image remains: {rel}")
+
+              # Literal HTML href/src and CSS url() references.
+              for m in re.finditer(r'(?:href|src)\s*=\s*["\']([^"\']+)["\']', s, flags=re.I):
+                  check_local(m.group(1), rel)
+              for m in re.finditer(r'url\(\s*["\']?([^"\')]+)', s, flags=re.I):
+                  check_local(m.group(1), rel)
+
+              # Template paths built from ${B}; B must resolve to root in production.
+              for m in re.finditer(r'\$\{B\}(/[^"\'\x60<>{}\s]*)', s):
+                  check_local(m.group(1), rel)
+
           required=[
-            root/"assets/videos/hookah-charcoal-cubes.mp4",
-            root/"assets/images/hookah-charcoal-video-poster.webp",
-            root/"favicon.ico",
-            root/"composite/index.html",
-            root/"charcoal/index.html",
+              "index.html",
+              ".htaccess",
+              "assets/site-shell.js",
+              "assets/site-shell.css",
+              "assets/images/2bf9c3bcb712.webp",
+              "favicon.ico",
+              "favicon-32x32.png",
+              "favicon-16x16.png",
+              "grinding/index.html",
+              "composite/index.html",
+              "charcoal/index.html",
+              "assets/videos/hookah-charcoal-cubes.mp4",
+              "assets/images/hookah-charcoal-video-poster.webp",
           ]
-          for p in required:
-              if not p.exists():
-                  bad.append(f"missing required file: {p.relative_to(root)}")
-          c=(root/"charcoal/index.html").read_text(encoding="utf-8")
-          if 'assets/videos/hookah-charcoal-cubes.mp4' not in c:
+          for rel in required:
+              if not (root/rel).exists():
+                  bad.append(f"missing required file: {rel}")
+
+          shell=(root/"assets/site-shell.js").read_text(encoding="utf-8")
+          if "const B=''" not in shell and 'const B=""' not in shell:
+              bad.append("site-shell.js production base B is not empty")
+          if "location.pathname.slice(B.length)" not in shell:
+              bad.append("site-shell.js does not contain corrected slug routing")
+          if "Раздел восстановлен" in (root/"assets/source-pages3.js").read_text(encoding="utf-8"):
+              pass
+          grinding=(root/"assets/source-pages3.js").read_text(encoding="utf-8")
+          if "'grinding'" not in grinding or "Измельчение" not in grinding:
+              bad.append("grinding content missing from source-pages3.js")
+
+          charcoal=(root/"charcoal/index.html").read_text(encoding="utf-8")
+          if "assets/videos/hookah-charcoal-cubes.mp4" not in charcoal:
               bad.append("hookah video not referenced by charcoal page")
-          comp=(root/"composite/index.html").read_text(encoding="utf-8")
-          if 'favicon.ico' not in comp:
+
+          composite=(root/"composite/index.html").read_text(encoding="utf-8")
+          if "favicon.ico" not in composite:
               bad.append("composite favicon link missing")
+
+          # Explicitly verify footer/topbar destinations used by site-shell.js.
+          for route in [
+              "referencelist","contacts","offers","tech-project","optimisation","tech-audit",
+              "revision","supply","installation","drying","grinding","combustion","briquetting",
+              "pellets","heat-recovery","charcoal","presswood","composite","page-derevo",
+              "agro","poultry","food","energy"
+          ]:
+              if not (root/route/"index.html").exists():
+                  bad.append(f"site-shell route missing: /{route}/")
+
           if bad:
-              raise SystemExit("\n".join(bad))
-          print("Production validation OK")
+              print("\n".join(sorted(set(bad))))
+              raise SystemExit(1)
+          print("FULL PRODUCTION VALIDATION OK")
           PY
 
           cd /tmp/op-project-reg
-          zip -qr /tmp/op-project-reg-2026-10-22.zip .
+          zip -qr /tmp/op-project-reg-2026-10-22-v2.zip .
 
       - name: Upload REG.RU package
         uses: actions/upload-artifact@v4
         with:
-          name: op-project-reg-2026-10-22
-          path: /tmp/op-project-reg-2026-10-22.zip
+          name: op-project-reg-2026-10-22-v2
+          path: /tmp/op-project-reg-2026-10-22-v2.zip
           retention-days: 30
