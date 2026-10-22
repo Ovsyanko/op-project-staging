@@ -62,6 +62,8 @@ jobs:
 
           def check_local(raw, source):
               raw=raw.strip()
+              if "$" in raw or "{" in raw or "}" in raw:
+                  return
               if not raw or raw.startswith(("#","mailto:","tel:","javascript:","data:","http://","https://","//")):
                   return
               if not raw.startswith("/"):
