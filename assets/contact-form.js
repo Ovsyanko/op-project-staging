@@ -1,7 +1,7 @@
 (()=>{ 
   'use strict';
-  const API = location.hostname.endsWith('github.io') ? 'https://op-co.ru/api/contact.php' : '/op-project-staging/api/contact.php';
-  const POLICY = location.hostname.endsWith('github.io') ? '/op-project-staging/policy/' : '/op-project-staging/policy/';
+  const API = location.hostname.endsWith('github.io') ? 'https://op-co.ru/api/contact.php' : '/api/contact.php';
+  const POLICY = location.hostname.endsWith('github.io') ? '/op-project-staging/policy/' : '/policy/';
 
   function isRequestForm(form){
     if(form.dataset.opContactReady) return false;
