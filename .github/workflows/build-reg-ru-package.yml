@@ -85,3 +85,4 @@ jobs:
           name: op-co.ru-production
           path: op-co.ru-production.zip
           if-no-files-found: error
+          retention-days: 7
