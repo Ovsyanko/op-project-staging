@@ -167,4 +167,4 @@ jobs:
         with:
           name: op-project-reg-2026-10-22-v2
           path: /tmp/op-project-reg-2026-10-22-v2.zip
-          retention-days: 30
+          retention-days: 7
